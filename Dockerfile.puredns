@@ -1,0 +1,16 @@
+# Build
+FROM golang:1.17-alpine AS build-env
+RUN go install github.com/d3mondev/puredns/v2@latest
+
+# Release
+FROM alpine:3.14
+RUN apk --no-cache --virtual .build-deps add git build-base bind-tools ca-certificates\
+   && git clone --depth=1 https://github.com/blechschmidt/massdns.git \
+   && cd massdns && make && apk del .build-deps
+
+RUN ln -s /massdns/bin/massdns /usr/bin/massdns
+COPY resolvers.txt /resolvers.txt
+COPY --from=build-env /go/bin/puredns /usr/local/bin/puredns
+WORKDIR /
+
+ENTRYPOINT ["puredns"]
